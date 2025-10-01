@@ -20,10 +20,11 @@ interface DispatchTeamDialogProps {
 }
 
 const teamLeads = [
-  { id: '1', name: 'Rajesh Kumar', phone: '+91-98765-43210', zone: 'North Gate' },
-  { id: '2', name: 'Priya Sharma', phone: '+91-98765-43211', zone: 'Main Temple' },
-  { id: '3', name: 'Amit Patel', phone: '+91-98765-43212', zone: 'South Entrance' },
-  { id: '4', name: 'Lakshmi Reddy', phone: '+91-98765-43213', zone: 'Parking Zones' },
+  { id: '1', name: 'Gaurav Singh', phone: '+91-7394028088', zone: 'Emergency Response Team' },
+  { id: '2', name: 'Rajesh Kumar', phone: '+91-98765-43210', zone: 'North Gate' },
+  { id: '3', name: 'Priya Sharma', phone: '+91-98765-43211', zone: 'Main Temple' },
+  { id: '4', name: 'Amit Patel', phone: '+91-98765-43212', zone: 'South Entrance' },
+  { id: '5', name: 'Lakshmi Reddy', phone: '+91-98765-43213', zone: 'Parking Zones' },
 ];
 
 const DispatchTeamDialog = ({ open, onOpenChange, alertLocation, alertMessage }: DispatchTeamDialogProps) => {
@@ -44,11 +45,30 @@ const DispatchTeamDialog = ({ open, onOpenChange, alertLocation, alertMessage }:
     setIsDispatching(true);
     const lead = teamLeads.find(l => l.id === selectedLead);
     
-    // Simulate dispatch call
+    // Show browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Emergency Team Dispatched', {
+        body: `${lead?.name} dispatched to ${alertLocation}`,
+        icon: '/favicon.ico',
+        requireInteraction: true,
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('Emergency Team Dispatched', {
+            body: `${lead?.name} dispatched to ${alertLocation}`,
+            icon: '/favicon.ico',
+            requireInteraction: true,
+          });
+        }
+      });
+    }
+    
+    // Simulate dispatch notification
     setTimeout(() => {
       toast({
-        title: "Team Dispatched",
-        description: `${lead?.name} has been notified and is en route to ${alertLocation}`,
+        title: "Team Dispatched Successfully",
+        description: `${lead?.name} has been notified via call and SMS. En route to ${alertLocation}`,
       });
       setIsDispatching(false);
       onOpenChange(false);
@@ -67,9 +87,31 @@ const DispatchTeamDialog = ({ open, onOpenChange, alertLocation, alertMessage }:
     }
 
     const lead = teamLeads.find(l => l.id === selectedLead);
+    
+    // Show notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Emergency Call Initiated', {
+        body: `Calling ${lead?.name} at ${lead?.phone}`,
+        icon: '/favicon.ico',
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('Emergency Call Initiated', {
+            body: `Calling ${lead?.name} at ${lead?.phone}`,
+            icon: '/favicon.ico',
+          });
+        }
+      });
+    }
+    
+    // Initiate actual call
+    const phoneNumber = lead?.phone.replace(/[^0-9+]/g, '');
+    window.location.href = `tel:${phoneNumber}`;
+    
     toast({
-      title: "Calling...",
-      description: `Initiating call to ${lead?.name} at ${lead?.phone}`,
+      title: "Call Initiated",
+      description: `Calling ${lead?.name} at ${lead?.phone}`,
     });
   };
 
