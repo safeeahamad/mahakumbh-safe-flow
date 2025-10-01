@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import CameraFeed from '@/components/dashboard/CameraFeed';
 import CameraDetailModal from '@/components/dashboard/CameraDetailModal';
 import VideoUploadDialog from '@/components/dashboard/VideoUploadDialog';
+import CameraAllocationDialog from '@/components/dashboard/CameraAllocationDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Grid3x3, LayoutGrid, Upload } from 'lucide-react';
+import { Grid3x3, LayoutGrid, Upload, Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import cameraFeed1 from '@/assets/camera-feed-1.jpg';
 import cameraFeed2 from '@/assets/camera-feed-2.jpg';
 import cameraFeed3 from '@/assets/camera-feed-3.jpg';
@@ -23,14 +25,52 @@ const Cameras = () => {
   const [gridSize, setGridSize] = React.useState<2 | 3>(2);
   const [selectedCamera, setSelectedCamera] = React.useState<CameraData | null>(null);
   const [uploadDialogCamera, setUploadDialogCamera] = React.useState<number | null>(null);
+  const [allocationDialog, setAllocationDialog] = React.useState<{ cameraId: number; allocation?: any } | null>(null);
   const [cameras, setCameras] = React.useState<CameraData[]>([
     { id: 1, name: 'Camera 1', location: 'Gate 1 - North Entrance', count: 12340, image: cameraFeed1 },
     { id: 2, name: 'Camera 2', location: 'Gate 2 - South Entrance', count: 10580, image: cameraFeed2 },
     { id: 3, name: 'Camera 3', location: 'Main Temple Area', count: 15920, image: cameraFeed3 },
     { id: 4, name: 'Camera 4', location: 'Parking Zone A', count: 6992, image: cameraFeed4 },
     { id: 5, name: 'Camera 5', location: 'Parking Zone B', count: 5430, image: cameraFeed1 },
-    { id: 6, name: 'Camera 6', location: 'Food Court', count: 3210, image: cameraFeed2 },
   ]);
+  const [allocations, setAllocations] = React.useState<Map<number, any>>(new Map());
+  const [streams, setStreams] = React.useState<Map<number, any>>(new Map());
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [allocationsRes, streamsRes] = await Promise.all([
+        supabase.from('camera_allocations').select('*').eq('is_active', true),
+        supabase.from('camera_streams').select('*').eq('is_live', true)
+      ]);
+
+      if (allocationsRes.data) {
+        const allocMap = new Map(allocationsRes.data.map(a => [a.camera_id, a]));
+        setAllocations(allocMap);
+      }
+
+      if (streamsRes.data) {
+        const streamMap = new Map(streamsRes.data.map(s => [s.camera_id, s]));
+        setStreams(streamMap);
+      }
+    };
+
+    fetchData();
+
+    const allocChannel = supabase
+      .channel('camera_allocations_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'camera_allocations' }, fetchData)
+      .subscribe();
+
+    const streamChannel = supabase
+      .channel('camera_streams_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'camera_streams' }, fetchData)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(allocChannel);
+      supabase.removeChannel(streamChannel);
+    };
+  }, []);
 
   const handleUploadSuccess = (cameraId: number, videoUrl: string) => {
     setCameras(prev => prev.map(cam => 
@@ -68,34 +108,59 @@ const Cameras = () => {
               <Upload className="h-4 w-4 mr-2" />
               Upload Videos
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAllocationDialog({ cameraId: 1 })}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Allocations
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className={`grid grid-cols-1 ${gridSize === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
-            {cameras.map((camera) => (
-              <div key={camera.id} className="relative group">
-                <CameraFeed
-                  name={camera.name}
-                  location={camera.location}
-                  crowdCount={camera.count}
-                  image={camera.image}
-                  videoUrl={camera.videoUrl}
-                  onExpand={() => setSelectedCamera(camera)}
-                />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUploadDialogCamera(camera.id);
-                  }}
-                >
-                  <Upload className="h-3 w-3 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            ))}
+            {cameras.map((camera) => {
+              const allocation = allocations.get(camera.id);
+              const stream = streams.get(camera.id);
+              const displayName = allocation?.camera_name || camera.name;
+              const displayLocation = allocation?.location || camera.location;
+              const videoUrl = stream?.stream_url || camera.videoUrl;
+              const isLive = stream?.is_live || false;
+
+              return (
+                <div key={camera.id} className="relative group">
+                  <CameraFeed
+                    name={displayName}
+                    location={displayLocation}
+                    crowdCount={camera.count}
+                    image={camera.image}
+                    videoUrl={videoUrl}
+                    isLive={isLive}
+                    onExpand={() => setSelectedCamera({ ...camera, name: displayName, location: displayLocation, videoUrl })}
+                  />
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAllocationDialog({ cameraId: camera.id, allocation });
+                      }}
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {allocation && (
+                    <div className="absolute bottom-16 left-3 z-10">
+                      <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        Allocated to: {allocation.user_email}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -116,6 +181,16 @@ const Cameras = () => {
           }
         }}
       />
+
+      {allocationDialog && (
+        <CameraAllocationDialog
+          isOpen={true}
+          onClose={() => setAllocationDialog(null)}
+          cameraId={allocationDialog.cameraId}
+          cameraName={`Camera ${allocationDialog.cameraId}`}
+          currentAllocation={allocationDialog.allocation}
+        />
+      )}
     </div>
   );
 };

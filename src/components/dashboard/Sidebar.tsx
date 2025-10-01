@@ -19,6 +19,7 @@ const Sidebar = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'operator', 'public'] },
     { icon: Video, label: 'Live Cameras', path: '/dashboard/cameras', roles: ['admin', 'operator'] },
+    { icon: Video, label: 'My Cameras', path: '/dashboard/my-cameras', roles: ['admin', 'operator', 'public'] },
     { icon: Map, label: 'Heatmap View', path: '/dashboard/heatmap', roles: ['admin', 'operator', 'public'] },
     { icon: Bell, label: 'Alerts', path: '/dashboard/alerts', roles: ['admin', 'operator'] },
     { icon: Users, label: 'Staff Management', path: '/dashboard/staff', roles: ['admin'] },

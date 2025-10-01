@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import Cameras from "./pages/Cameras";
+import MyCameras from "./pages/MyCameras";
 import Heatmap from "./pages/Heatmap";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
             >
               <Route index element={<DashboardHome />} />
               <Route path="cameras" element={<Cameras />} />
+              <Route path="my-cameras" element={<MyCameras />} />
               <Route path="heatmap" element={<Heatmap />} />
             </Route>
             <Route path="*" element={<NotFound />} />
