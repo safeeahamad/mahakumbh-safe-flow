@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import React, { useEffect, useRef } from 'react';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 interface CrowdPoint {
@@ -81,66 +81,77 @@ const getColorByDensity = (density: 'high' | 'medium' | 'low'): string => {
 };
 
 const CrowdMap = () => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
   useEffect(() => {
     // Request notification permission on mount
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+
+    // Initialize map only once
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    // Create map
+    const map = L.map(mapContainerRef.current).setView([23.1828, 75.7681], 15);
+    mapRef.current = map;
+
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Add crowd points as circle markers
+    crowdPoints.forEach((point) => {
+      const percentage = Math.round((point.count / point.capacity) * 100);
+      const color = getColorByDensity(point.density);
+
+      const circle = L.circleMarker([point.lat, point.lon], {
+        radius: 15,
+        fillColor: color,
+        fillOpacity: 0.7,
+        color: '#fff',
+        weight: 2,
+      }).addTo(map);
+
+      // Add popup
+      const popupContent = `
+        <div style="padding: 8px; min-width: 200px;">
+          <h3 style="font-weight: bold; font-size: 0.875rem; margin-bottom: 4px;">${point.name}</h3>
+          <div style="font-size: 0.75rem;">
+            <p style="color: #6b7280; margin: 4px 0;">
+              Crowd Density: <span style="font-weight: 600;">${percentage}%</span>
+            </p>
+            <p style="color: #6b7280; margin: 4px 0;">
+              Count: <span style="font-weight: 600;">${point.count.toLocaleString()}</span> / ${point.capacity.toLocaleString()}
+            </p>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+              <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: white; background-color: ${color};">
+                ${point.density.toUpperCase()} DENSITY
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+      circle.bindPopup(popupContent);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, []);
 
   return (
-    <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
-      <MapContainer
-        center={[23.1828, 75.7681]}
-        zoom={15}
-        style={{ height: '100%', width: '100%' }}
-        className="z-0"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        
-        {crowdPoints.map((point) => {
-          const percentage = Math.round((point.count / point.capacity) * 100);
-          return (
-            <CircleMarker
-              key={point.id}
-              center={[point.lat, point.lon]}
-              radius={15}
-              pathOptions={{
-                fillColor: getColorByDensity(point.density),
-                fillOpacity: 0.7,
-                color: '#fff',
-                weight: 2,
-              }}
-            >
-              <Popup>
-                <div className="p-2 min-w-[200px]">
-                  <h3 className="font-bold text-sm mb-1">{point.name}</h3>
-                  <div className="text-xs space-y-1">
-                    <p className="text-muted-foreground">
-                      Crowd Density: <span className="font-semibold">{percentage}%</span>
-                    </p>
-                    <p className="text-muted-foreground">
-                      Count: <span className="font-semibold">{point.count.toLocaleString()}</span> / {point.capacity.toLocaleString()}
-                    </p>
-                    <div className="mt-2 pt-2 border-t">
-                      <span 
-                        className="inline-block px-2 py-1 rounded text-xs font-semibold text-white"
-                        style={{ backgroundColor: getColorByDensity(point.density) }}
-                      >
-                        {point.density.toUpperCase()} DENSITY
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          );
-        })}
-      </MapContainer>
-    </div>
+    <div 
+      ref={mapContainerRef} 
+      className="relative w-full h-full rounded-lg overflow-hidden border border-border"
+      style={{ minHeight: '100%' }}
+    />
   );
 };
 
