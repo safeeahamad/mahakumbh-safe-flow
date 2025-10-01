@@ -14,7 +14,8 @@ interface CameraDetailModalProps {
     name: string;
     location: string;
     count: number;
-    image: string;
+    image?: string;
+    videoUrl?: string;
   };
 }
 
@@ -37,6 +38,7 @@ const CameraDetailModal: React.FC<CameraDetailModalProps> = ({ isOpen, onClose, 
   const [detectedPeople, setDetectedPeople] = useState<DetectedPerson[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [showRoutes, setShowRoutes] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   // Simulated AI detection
   useEffect(() => {
@@ -121,11 +123,23 @@ const CameraDetailModal: React.FC<CameraDetailModalProps> = ({ isOpen, onClose, 
             <Card>
               <CardContent className="p-4">
                 <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-                  <img 
-                    src={camera.image} 
-                    alt={camera.name}
-                    className="w-full h-full object-cover"
-                  />
+                  {camera.videoUrl ? (
+                    <video
+                      ref={videoRef}
+                      src={camera.videoUrl}
+                      className="w-full h-full object-cover"
+                      loop
+                      muted
+                      autoPlay
+                      playsInline
+                    />
+                  ) : (
+                    <img 
+                      src={camera.image} 
+                      alt={camera.name}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                   
                   {/* Person Detection Overlays */}
                   {!analyzing && detectedPeople.map((person) => (

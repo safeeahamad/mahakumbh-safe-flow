@@ -8,7 +8,8 @@ interface CameraFeedProps {
   name: string;
   location: string;
   crowdCount: number;
-  image: string;
+  image?: string;
+  videoUrl?: string;
   isLive?: boolean;
   onExpand?: () => void;
 }
@@ -18,19 +19,45 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
   location, 
   crowdCount, 
   image,
+  videoUrl,
   isLive = true,
   onExpand
 }) => {
   const [isPaused, setIsPaused] = React.useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  const togglePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (isPaused) {
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+      }
+      setIsPaused(!isPaused);
+    }
+  };
 
   return (
     <Card className="overflow-hidden border-border group hover:border-primary/50 transition-colors cursor-pointer" onClick={onExpand}>
       <div className="relative aspect-video bg-black">
-        <img 
-          src={image} 
-          alt={name}
-          className="w-full h-full object-cover"
-        />
+        {videoUrl ? (
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            className="w-full h-full object-cover"
+            loop
+            muted
+            autoPlay
+            playsInline
+          />
+        ) : (
+          <img 
+            src={image} 
+            alt={name}
+            className="w-full h-full object-cover"
+          />
+        )}
         
         {isLive && (
           <div className="absolute top-3 left-3">
@@ -45,14 +72,16 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
         )}
 
         <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button 
-            size="icon" 
-            variant="secondary"
-            className="h-8 w-8 bg-black/50 hover:bg-black/70"
-            onClick={() => setIsPaused(!isPaused)}
-          >
-            {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          </Button>
+          {videoUrl && (
+            <Button 
+              size="icon" 
+              variant="secondary"
+              className="h-8 w-8 bg-black/50 hover:bg-black/70"
+              onClick={togglePlayPause}
+            >
+              {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            </Button>
+          )}
           <Button 
             size="icon" 
             variant="secondary"
