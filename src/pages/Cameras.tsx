@@ -1,5 +1,6 @@
 import React from 'react';
 import CameraFeed from '@/components/dashboard/CameraFeed';
+import CameraDetailModal from '@/components/dashboard/CameraDetailModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Grid3x3, LayoutGrid } from 'lucide-react';
@@ -10,6 +11,7 @@ import cameraFeed4 from '@/assets/camera-feed-4.jpg';
 
 const Cameras = () => {
   const [gridSize, setGridSize] = React.useState<2 | 3>(2);
+  const [selectedCamera, setSelectedCamera] = React.useState<typeof cameras[0] | null>(null);
 
   const cameras = [
     { id: 1, name: 'Camera 1', location: 'Gate 1 - North Entrance', count: 12340, image: cameraFeed1 },
@@ -53,11 +55,18 @@ const Cameras = () => {
                 location={camera.location}
                 crowdCount={camera.count}
                 image={camera.image}
+                onExpand={() => setSelectedCamera(camera)}
               />
             ))}
           </div>
         </CardContent>
       </Card>
+
+      <CameraDetailModal
+        isOpen={!!selectedCamera}
+        onClose={() => setSelectedCamera(null)}
+        camera={selectedCamera || cameras[0]}
+      />
     </div>
   );
 };

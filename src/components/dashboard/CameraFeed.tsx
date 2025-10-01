@@ -10,6 +10,7 @@ interface CameraFeedProps {
   crowdCount: number;
   image: string;
   isLive?: boolean;
+  onExpand?: () => void;
 }
 
 const CameraFeed: React.FC<CameraFeedProps> = ({ 
@@ -17,12 +18,13 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
   location, 
   crowdCount, 
   image,
-  isLive = true 
+  isLive = true,
+  onExpand
 }) => {
   const [isPaused, setIsPaused] = React.useState(false);
 
   return (
-    <Card className="overflow-hidden border-border group hover:border-primary/50 transition-colors">
+    <Card className="overflow-hidden border-border group hover:border-primary/50 transition-colors cursor-pointer" onClick={onExpand}>
       <div className="relative aspect-video bg-black">
         <img 
           src={image} 
@@ -55,6 +57,10 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
             size="icon" 
             variant="secondary"
             className="h-8 w-8 bg-black/50 hover:bg-black/70"
+            onClick={(e) => {
+              e.stopPropagation();
+              onExpand?.();
+            }}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
