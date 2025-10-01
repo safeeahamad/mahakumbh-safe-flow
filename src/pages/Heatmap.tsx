@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import CrowdMap from '@/components/dashboard/CrowdMap';
 
 interface Zone {
   id: string;
@@ -42,82 +43,39 @@ const Heatmap = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Title Bar */}
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold tracking-tight">Live Crowd Heatmap</h1>
+        <p className="text-muted-foreground">Real-time AI-powered crowd density analysis</p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Heatmap */}
+        {/* Real Map */}
         <Card className="lg:col-span-2 border-border">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Crowd Density Map</CardTitle>
+              <CardTitle>Interactive Crowd Density Map</CardTitle>
               <Badge variant="secondary">Auto-refresh: 5s</Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="relative aspect-video bg-muted rounded-lg border border-border overflow-hidden">
-              {/* Grid background */}
-              <div className="absolute inset-0 opacity-20">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div
-                    key={`h-${i}`}
-                    className="absolute w-full border-t border-border"
-                    style={{ top: `${i * 10}%` }}
-                  />
-                ))}
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div
-                    key={`v-${i}`}
-                    className="absolute h-full border-l border-border"
-                    style={{ left: `${i * 10}%` }}
-                  />
-                ))}
-              </div>
-
-              {/* Zones */}
-              {zones.map((zone) => (
-                <div
-                  key={zone.id}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-                  style={{ left: `${zone.x}%`, top: `${zone.y}%` }}
-                >
-                  <div className={cn(
-                    "h-20 w-20 rounded-full flex items-center justify-center transition-all",
-                    "group-hover:scale-110",
-                    getStatusColor(zone.status),
-                    "bg-opacity-40 backdrop-blur-sm border-2 border-white/20"
-                  )}>
-                    <div className="text-center">
-                      <p className="text-xs font-bold text-white">{zone.name}</p>
-                      <p className="text-lg font-bold text-white">{getPercentage(zone)}%</p>
-                    </div>
-                  </div>
-                  
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-card border border-border rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                    <p className="text-sm font-semibold">{zone.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {zone.current.toLocaleString()} / {zone.capacity.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="h-[600px] w-full">
+              <CrowdMap />
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-6 mt-4">
+            <div className="flex items-center justify-center gap-6 mt-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-safe))]" />
-                <span className="text-xs">Safe (0-30%)</span>
+                <div className="h-3 w-3 rounded-full bg-red-500" />
+                <span className="text-xs">High Density (81-100%)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-moderate))]" />
-                <span className="text-xs">Moderate (31-60%)</span>
+                <div className="h-3 w-3 rounded-full bg-orange-500" />
+                <span className="text-xs">Medium Density (51-80%)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-high))]" />
-                <span className="text-xs">High (61-80%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-critical))]" />
-                <span className="text-xs">Critical (81-100%)</span>
+                <div className="h-3 w-3 rounded-full bg-blue-500" />
+                <span className="text-xs">Low Density (0-50%)</span>
               </div>
             </div>
           </CardContent>
