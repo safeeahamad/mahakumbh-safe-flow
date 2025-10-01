@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      camera_allocations: {
+        Row: {
+          assigned_at: string
+          camera_id: number
+          camera_name: string
+          id: string
+          is_active: boolean | null
+          location: string
+          user_email: string
+        }
+        Insert: {
+          assigned_at?: string
+          camera_id: number
+          camera_name: string
+          id?: string
+          is_active?: boolean | null
+          location: string
+          user_email: string
+        }
+        Update: {
+          assigned_at?: string
+          camera_id?: number
+          camera_name?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string
+          user_email?: string
+        }
+        Relationships: []
+      }
+      camera_streams: {
+        Row: {
+          camera_id: number
+          id: string
+          is_live: boolean | null
+          started_at: string | null
+          stream_url: string | null
+          updated_at: string | null
+          user_email: string
+        }
+        Insert: {
+          camera_id: number
+          id?: string
+          is_live?: boolean | null
+          started_at?: string | null
+          stream_url?: string | null
+          updated_at?: string | null
+          user_email: string
+        }
+        Update: {
+          camera_id?: number
+          id?: string
+          is_live?: boolean | null
+          started_at?: string | null
+          stream_url?: string | null
+          updated_at?: string | null
+          user_email?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
