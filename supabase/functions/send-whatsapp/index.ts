@@ -31,6 +31,15 @@ serve(async (req) => {
     const cleanPhoneNumber = to.replace(/[^0-9+]/g, '');
     const whatsappTo = `whatsapp:${cleanPhoneNumber}`;
 
+    // Ensure FROM number has whatsapp: prefix
+    let whatsappFrom = TWILIO_WHATSAPP_NUMBER!;
+    if (!whatsappFrom.startsWith('whatsapp:')) {
+      whatsappFrom = `whatsapp:${whatsappFrom}`;
+    }
+
+    console.log('From:', whatsappFrom);
+    console.log('To:', whatsappTo);
+
     // Construct the emergency message
     const emergencyMessage = `🚨 EMERGENCY DISPATCH ALERT 🚨\n\nHello ${teamLeadName},\n\nYou have been dispatched to handle an emergency situation.\n\n📍 Location: ${location}\n⚠️ Alert: ${message}\n\nPlease proceed to the location immediately and confirm your arrival.\n\n- Mahakumbh 2025 Control Center`;
 
@@ -38,7 +47,7 @@ serve(async (req) => {
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
     
     const formData = new URLSearchParams();
-    formData.append('From', TWILIO_WHATSAPP_NUMBER!);
+    formData.append('From', whatsappFrom);
     formData.append('To', whatsappTo);
     formData.append('Body', emergencyMessage);
 
