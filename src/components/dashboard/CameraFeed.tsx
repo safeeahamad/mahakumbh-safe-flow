@@ -38,6 +38,18 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
     }
   };
 
+  React.useEffect(() => {
+    // Auto-play video when it loads
+    if (videoRef.current && videoUrl) {
+      videoRef.current.play().catch(err => {
+        console.log('Auto-play prevented:', err);
+      });
+    }
+  }, [videoUrl]);
+
+  const hasVideoFeed = videoUrl || (isLive && image);
+  const showOfflineState = !videoUrl && !image;
+
   return (
     <Card className="overflow-hidden border-border group hover:border-primary/50 transition-colors cursor-pointer" onClick={onExpand}>
       <div className="relative aspect-video bg-black">
@@ -51,22 +63,37 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
             autoPlay
             playsInline
           />
-        ) : (
+        ) : image ? (
           <img 
             src={image} 
             alt={name}
             className="w-full h-full object-cover"
           />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-muted-foreground text-sm mb-2">No Stream Available</div>
+              <Badge variant="secondary">Offline</Badge>
+            </div>
+          </div>
         )}
         
-        {isLive && (
+        {isLive && hasVideoFeed && (
           <div className="absolute top-3 left-3">
-            <Badge variant="destructive" className="gap-1 px-2">
+            <Badge variant="destructive" className="gap-1 px-2 animate-pulse">
               <span className="relative flex h-2 w-2">
-                <span className="live-indicator animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
               </span>
               LIVE
+            </Badge>
+          </div>
+        )}
+
+        {!isLive && !showOfflineState && (
+          <div className="absolute top-3 left-3">
+            <Badge variant="secondary" className="gap-1 px-2">
+              Offline
             </Badge>
           </div>
         )}
@@ -82,17 +109,19 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
               {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </Button>
           )}
-          <Button 
-            size="icon" 
-            variant="secondary"
-            className="h-8 w-8 bg-black/50 hover:bg-black/70"
-            onClick={(e) => {
-              e.stopPropagation();
-              onExpand?.();
-            }}
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
+          {hasVideoFeed && (
+            <Button 
+              size="icon" 
+              variant="secondary"
+              className="h-8 w-8 bg-black/50 hover:bg-black/70"
+              onClick={(e) => {
+                e.stopPropagation();
+                onExpand?.();
+              }}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
