@@ -4,13 +4,17 @@ let detector: any = null;
 
 export async function initializeDetector() {
   if (!detector) {
-    console.log('Initializing YOLO detector...');
-    detector = await pipeline(
-      'object-detection' as PipelineType,
-      'Xenova/yolov9-c',
-      { device: 'webgpu' }
-    );
-    console.log('YOLO detector initialized');
+    console.log('Initializing object detector...');
+    try {
+      detector = await pipeline(
+        'object-detection' as PipelineType,
+        'Xenova/detr-resnet-50'
+      );
+      console.log('Object detector initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize detector:', error);
+      throw error;
+    }
   }
   return detector;
 }
@@ -32,10 +36,11 @@ export async function detectObjects(imageElement: HTMLVideoElement | HTMLImageEl
   }
   
   const results = await detector(imageElement, {
-    threshold: 0.3,
-    percentage: true,
+    threshold: 0.5,
+    percentage: false,
   });
   
+  console.log('Detection results:', results);
   return results;
 }
 
@@ -62,26 +67,22 @@ export function drawDetections(
   detections.forEach(detection => {
     if (detection.label === 'person') {
       const { xmin, ymin, xmax, ymax } = detection.box;
-      const x = xmin * canvas.width / 100;
-      const y = ymin * canvas.height / 100;
-      const width = (xmax - xmin) * canvas.width / 100;
-      const height = (ymax - ymin) * canvas.height / 100;
-
+      
       // Draw bounding box
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 3;
-      ctx.strokeRect(x, y, width, height);
+      ctx.strokeRect(xmin, ymin, xmax - xmin, ymax - ymin);
 
       // Draw label background
       ctx.fillStyle = '#3b82f6';
       const label = `Person ${Math.round(detection.score * 100)}%`;
+      ctx.font = '16px sans-serif';
       const textWidth = ctx.measureText(label).width;
-      ctx.fillRect(x, y - 25, textWidth + 10, 25);
+      ctx.fillRect(xmin, ymin - 25, textWidth + 10, 25);
 
       // Draw label text
       ctx.fillStyle = '#ffffff';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(label, x + 5, y - 7);
+      ctx.fillText(label, xmin + 5, ymin - 7);
     }
   });
 }

@@ -43,29 +43,31 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
     setIsDetecting(true);
     
     const runDetection = async () => {
-      if (!videoRef.current || !canvasRef.current) return;
+      if (!videoRef.current || !canvasRef.current || !isStreaming) return;
       
       try {
-        const detections = await detectObjects(videoRef.current);
-        const count = countPeople(detections);
-        setPersonCount(count);
-        drawDetections(canvasRef.current, videoRef.current, detections);
-        
-        // Update crowd count in database
-        await supabase
-          .from('camera_streams')
-          .update({ 
-            is_live: true,
-          })
-          .eq('camera_id', allocation.camera_id);
+        // Wait for video to be ready
+        if (videoRef.current.readyState >= 2) {
+          const detections = await detectObjects(videoRef.current);
+          const count = countPeople(detections);
+          setPersonCount(count);
+          console.log(`Detected ${count} people`);
+          drawDetections(canvasRef.current, videoRef.current, detections);
+        }
       } catch (error) {
         console.error('Detection error:', error);
+        toast({
+          title: "Detection Error",
+          description: "Failed to detect people. Please try again.",
+          variant: "destructive"
+        });
       }
     };
 
-    // Run detection every 2 seconds
-    detectionIntervalRef.current = window.setInterval(runDetection, 2000);
-    runDetection(); // Run immediately
+    // Run detection every 3 seconds
+    detectionIntervalRef.current = window.setInterval(runDetection, 3000);
+    // Wait a bit before first detection
+    setTimeout(runDetection, 2000);
   };
 
   const stopDetection = () => {
@@ -86,7 +88,11 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
   const startStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 },
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
         audio: false
       });
 
@@ -95,26 +101,36 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
         streamRef.current = stream;
         setIsStreaming(true);
 
-        await supabase
-          .from('camera_streams')
-          .upsert({
-            camera_id: allocation.camera_id,
-            user_email: user?.email || '',
-            is_live: true,
-            stream_url: null
-          }, {
-            onConflict: 'camera_id'
-          });
+        // Wait for video to load
+        videoRef.current.onloadedmetadata = async () => {
+          try {
+            await videoRef.current?.play();
+            console.log('Video stream started successfully');
+            
+            await supabase
+              .from('camera_streams')
+              .upsert({
+                camera_id: allocation.camera_id,
+                user_email: user?.email || '',
+                is_live: true,
+                stream_url: null
+              }, {
+                onConflict: 'camera_id'
+              });
 
-        toast({
-          title: "Camera Started",
-          description: "Starting YOLO person detection..."
-        });
-        
-        // Start YOLO detection after a short delay
-        setTimeout(() => {
-          startDetection();
-        }, 1000);
+            toast({
+              title: "Camera Started",
+              description: "Initializing person detection..."
+            });
+            
+            // Start detection after video is ready
+            setTimeout(() => {
+              startDetection();
+            }, 2000);
+          } catch (err) {
+            console.error('Error starting video:', err);
+          }
+        };
       }
     } catch (error: any) {
       toast({
