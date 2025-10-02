@@ -11,6 +11,7 @@ import DashboardHome from "./pages/DashboardHome";
 import Cameras from "./pages/Cameras";
 import MyCameras from "./pages/MyCameras";
 import Heatmap from "./pages/Heatmap";
+import Staff from "./pages/Staff";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="cameras" element={<Cameras />} />
               <Route path="my-cameras" element={<MyCameras />} />
               <Route path="heatmap" element={<Heatmap />} />
+              <Route path="staff" element={<Staff />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
