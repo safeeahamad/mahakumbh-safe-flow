@@ -40,17 +40,19 @@ const Cameras = () => {
     const fetchData = async () => {
       const [allocationsRes, streamsRes] = await Promise.all([
         supabase.from('camera_allocations').select('*').eq('is_active', true),
-        supabase.from('camera_streams').select('*').eq('is_live', true)
+        supabase.from('camera_streams').select('*')
       ]);
 
       if (allocationsRes.data) {
         const allocMap = new Map(allocationsRes.data.map(a => [a.camera_id, a]));
         setAllocations(allocMap);
+        console.log('Allocations loaded:', allocationsRes.data);
       }
 
       if (streamsRes.data) {
         const streamMap = new Map(streamsRes.data.map(s => [s.camera_id, s]));
         setStreams(streamMap);
+        console.log('Streams loaded:', streamsRes.data);
       }
     };
 
@@ -58,12 +60,18 @@ const Cameras = () => {
 
     const allocChannel = supabase
       .channel('camera_allocations_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'camera_allocations' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'camera_allocations' }, () => {
+        console.log('Camera allocation changed');
+        fetchData();
+      })
       .subscribe();
 
     const streamChannel = supabase
       .channel('camera_streams_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'camera_streams' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'camera_streams' }, () => {
+        console.log('Camera stream changed');
+        fetchData();
+      })
       .subscribe();
 
     return () => {
@@ -137,6 +145,7 @@ const Cameras = () => {
                     image={camera.image}
                     videoUrl={videoUrl}
                     isLive={isLive}
+                    allocatedTo={allocation?.user_email}
                     onExpand={() => setSelectedCamera({ ...camera, name: displayName, location: displayLocation, videoUrl })}
                   />
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
@@ -151,13 +160,6 @@ const Cameras = () => {
                       <Settings className="h-3 w-3" />
                     </Button>
                   </div>
-                  {allocation && (
-                    <div className="absolute bottom-16 left-3 z-10">
-                      <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        Allocated to: {allocation.user_email}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}

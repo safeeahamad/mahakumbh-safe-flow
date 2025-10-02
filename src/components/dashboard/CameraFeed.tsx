@@ -12,6 +12,7 @@ interface CameraFeedProps {
   videoUrl?: string;
   isLive?: boolean;
   onExpand?: () => void;
+  allocatedTo?: string;
 }
 
 const CameraFeed: React.FC<CameraFeedProps> = ({ 
@@ -21,7 +22,8 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
   image,
   videoUrl,
   isLive = true,
-  onExpand
+  onExpand,
+  allocatedTo
 }) => {
   const [isPaused, setIsPaused] = React.useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -124,9 +126,14 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
           )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-          <p className="text-white font-medium text-sm">{name}</p>
-          <p className="text-white/70 text-xs">{location}</p>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4">
+          {allocatedTo && (
+            <p className="text-white/90 text-xs font-medium mb-1">
+              Allocated to: {allocatedTo}
+            </p>
+          )}
+          <p className="text-white font-semibold text-sm">{name}</p>
+          <p className="text-white/80 text-xs">{location}</p>
         </div>
       </div>
 
