@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Phone, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DispatchTeamDialogProps {
   open: boolean;
@@ -32,7 +33,7 @@ const DispatchTeamDialog = ({ open, onOpenChange, alertLocation, alertMessage }:
   const [isDispatching, setIsDispatching] = useState(false);
   const { toast } = useToast();
 
-  const handleDispatch = () => {
+  const handleDispatch = async () => {
     if (!selectedLead) {
       toast({
         title: "Error",
@@ -45,35 +46,62 @@ const DispatchTeamDialog = ({ open, onOpenChange, alertLocation, alertMessage }:
     setIsDispatching(true);
     const lead = teamLeads.find(l => l.id === selectedLead);
     
-    // Show browser notification
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Emergency Team Dispatched', {
-        body: `${lead?.name} dispatched to ${alertLocation}`,
-        icon: '/favicon.ico',
-        requireInteraction: true,
+    try {
+      // Send WhatsApp message via edge function
+      console.log('Sending WhatsApp message to:', lead?.phone);
+      
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          to: lead?.phone,
+          teamLeadName: lead?.name,
+          location: alertLocation,
+          message: alertMessage,
+        },
       });
-    } else if ('Notification' in window && Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          new Notification('Emergency Team Dispatched', {
-            body: `${lead?.name} dispatched to ${alertLocation}`,
-            icon: '/favicon.ico',
-            requireInteraction: true,
-          });
-        }
-      });
-    }
-    
-    // Simulate dispatch notification
-    setTimeout(() => {
+
+      if (error) {
+        console.error('Error sending WhatsApp:', error);
+        throw error;
+      }
+
+      console.log('WhatsApp sent successfully:', data);
+      
+      // Show browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Emergency Team Dispatched', {
+          body: `${lead?.name} dispatched to ${alertLocation}`,
+          icon: '/favicon.ico',
+          requireInteraction: true,
+        });
+      } else if ('Notification' in window && Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('Emergency Team Dispatched', {
+              body: `${lead?.name} dispatched to ${alertLocation}`,
+              icon: '/favicon.ico',
+              requireInteraction: true,
+            });
+          }
+        });
+      }
+      
       toast({
         title: "Team Dispatched Successfully",
-        description: `${lead?.name} has been notified via call and SMS. En route to ${alertLocation}`,
+        description: `${lead?.name} has been notified via WhatsApp and is en route to ${alertLocation}`,
       });
-      setIsDispatching(false);
+      
       onOpenChange(false);
       setSelectedLead('');
-    }, 1500);
+    } catch (error: any) {
+      console.error('Error dispatching team:', error);
+      toast({
+        title: "Dispatch Failed",
+        description: error.message || "Failed to send WhatsApp message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDispatching(false);
+    }
   };
 
   const handleCall = () => {
