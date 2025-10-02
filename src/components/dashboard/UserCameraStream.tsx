@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, VideoOff, Upload } from 'lucide-react';
+import { Video, VideoOff, Upload, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { detectObjects, countPeople, drawDetections } from '@/utils/yoloDetection';
 
 interface UserCameraStreamProps {
   allocation: {
@@ -18,16 +19,69 @@ interface UserCameraStreamProps {
 const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
+  const [personCount, setPersonCount] = useState(0);
+  const [isDetecting, setIsDetecting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const detectionIntervalRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
   useEffect(() => {
     return () => {
       stopStream();
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+      }
     };
   }, []);
+
+  const startDetection = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    setIsDetecting(true);
+    
+    const runDetection = async () => {
+      if (!videoRef.current || !canvasRef.current) return;
+      
+      try {
+        const detections = await detectObjects(videoRef.current);
+        const count = countPeople(detections);
+        setPersonCount(count);
+        drawDetections(canvasRef.current, videoRef.current, detections);
+        
+        // Update crowd count in database
+        await supabase
+          .from('camera_streams')
+          .update({ 
+            is_live: true,
+          })
+          .eq('camera_id', allocation.camera_id);
+      } catch (error) {
+        console.error('Detection error:', error);
+      }
+    };
+
+    // Run detection every 2 seconds
+    detectionIntervalRef.current = window.setInterval(runDetection, 2000);
+    runDetection(); // Run immediately
+  };
+
+  const stopDetection = () => {
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+      detectionIntervalRef.current = null;
+    }
+    setIsDetecting(false);
+    setPersonCount(0);
+    
+    // Clear canvas
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
 
   const startStream = async () => {
     try {
@@ -54,8 +108,13 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
 
         toast({
           title: "Camera Started",
-          description: "Your camera feed is now live"
+          description: "Starting YOLO person detection..."
         });
+        
+        // Start YOLO detection after a short delay
+        setTimeout(() => {
+          startDetection();
+        }, 1000);
       }
     } catch (error: any) {
       toast({
@@ -67,6 +126,8 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
   };
 
   const stopStream = async () => {
+    stopDetection();
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -137,9 +198,17 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Camera {allocation.camera_id}</CardTitle>
-          <Badge variant={isStreaming ? "default" : "secondary"}>
-            {isStreaming ? "Live" : "Offline"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {isDetecting && (
+              <Badge variant="outline" className="gap-1">
+                <Users className="h-3 w-3" />
+                {personCount} {personCount === 1 ? 'Person' : 'People'}
+              </Badge>
+            )}
+            <Badge variant={isStreaming ? "default" : "secondary"}>
+              {isStreaming ? "Live" : "Offline"}
+            </Badge>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">{allocation.location}</p>
       </CardHeader>
@@ -153,9 +222,18 @@ const UserCameraStream = ({ allocation }: UserCameraStreamProps) => {
             className="w-full h-full object-cover"
             src={uploadedVideo || undefined}
           />
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+          />
           {!isStreaming && !uploadedVideo && (
             <div className="absolute inset-0 flex items-center justify-center text-white">
               <VideoOff className="h-12 w-12" />
+            </div>
+          )}
+          {isDetecting && (
+            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
+              YOLO Detection Active
             </div>
           )}
         </div>
